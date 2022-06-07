@@ -6,6 +6,11 @@
 
 #define MAXLEN 64
 #define MAXARGS 16
+#define MAXJOBS 8
+
+pid_t jobs[MAXJOBS], cnt = 0;
+
+volatite pid_t fd_pid;
 
 pid_t Fork(){
     pid_t pid = fork();
@@ -14,6 +19,21 @@ pid_t Fork(){
         exit(1);
     }
     return pid;
+}
+
+sighandler_t Signal(int signum, sighandler_t handler){
+    if (signal(signum, handler) == SIG_ERR){
+        perror("signal error: ");
+        exit(1);    
+    }
+}
+
+int Kill(pid_t pid, int sig){
+  if (kill(pid, sig) < 0){
+    perror("kill error: ");
+    return -1;
+  }
+  return 0;
 }
 
 int parse(char * buf, char * argv[]){
@@ -41,7 +61,9 @@ int built_in(char * argv[]){
     case "exit":
       exit(0);
     case "jobs":
-      
+      for (int i = 0; i < cnt; ++i){
+        printf("%d runs in background\n", jobs[i]);
+      }
       break;
     case "bg":
       
@@ -52,6 +74,11 @@ int built_in(char * argv[]){
     default:
       return 0;
   }
+}
+
+void sigint_handler(int sig){
+  Kill(fg_pid, SIGINT);
+  return;
 }
 
 void eval(char * cmd){
@@ -71,9 +98,12 @@ void eval(char * cmd){
         exit(0);
       }
     }
+    Signal(SIGINT, sigint_handler);
     if (bg){
-      
+      printf("%d: %s", pid, cmd);
+      jobs[cnt++] = pid;
     }else{
+      fg_pid = pid;
       int stat;
       if (waitpid(pid, &stat, 0) < 0){
         perror("wait error: ");
