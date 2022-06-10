@@ -9,6 +9,8 @@ typedef struct job{
     char * desc;
 } job;
 
+volatile int count;
+
 struct linked_list{
     job * head;
     job * tail;
