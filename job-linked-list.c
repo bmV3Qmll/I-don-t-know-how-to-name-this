@@ -35,9 +35,8 @@ struct linked_list{
 /*
     in main implementation, declare jobs as follow:
     jobs = (struct linked_list *) Malloc(sizeof(struct linked_list));
-    jobs->count = 0;
-    jobs->head = construct(2367, 10, NULL, NULL);
-    jobs->tail = construct(2879, 11, jobs->head, NULL);
+    jobs->head = construct(0, 0, NULL, NULL);
+    jobs->tail = construct(0, 0, jobs->head, NULL);
 */
 
 job * push(pid_t p, char * des){ // O(1)
@@ -73,8 +72,8 @@ debugging code
 
 int main(){
     jobs = (struct linked_list *) Malloc(sizeof(struct linked_list));
-    jobs->head = construct(2367, 10, NULL, NULL);
-    jobs->tail = construct(2879, 11, jobs->head, NULL);
+    jobs->head = construct(0, 0, NULL, NULL);
+    jobs->tail = construct(0, 0, jobs->head, NULL);
     push(1189, "cat hello.txt | sort");
     job * sec = push(2205, "ls -la");
     push(3456, "strace test.c");
