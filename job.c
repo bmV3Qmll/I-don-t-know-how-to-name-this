@@ -48,24 +48,33 @@ job * push(pid_t p, char * des){ // O(1)
     jobs->tail = newTail;
 }
 
-void erase(pid_t p){ // O(n)
+//  Note: returns the previous pointer to target
+job * search(int j, pid_t p){ // for unknown variables, set to -1
     job * iter = jobs->head;
     for (; iter != jobs->tail; iter = iter->next){
-        if (iter->next->pid == p){
-            job * temp = iter->next;
-            iter->next = iter->next->next;
-            free(temp);
-            iter = iter->next;
-            break;
-        }
+        if (iter->next->jid == j || iter->next->pid == p){return iter;}
     }
+    return NULL;
 }
 
-void print_jobs(int fd){ // O(n)
+void erase(job * prev){
+    if (!tar){return;}
+    job * temp = prev->next;
+    prev->next = prev->next->next;
+    free(temp);
+}
+
+void print_job(job * it, int fd){
+    if (!it){return;}
+    dprintf(fd, "[%d] %d %s &\n", it->jid, it->pid, it->desc);
+}
+
+void list_jobs(int fd){ // O(n)
     job * iter = jobs->head->next;
     for (; iter != jobs->tail; iter = iter->next){
-        dprintf(fd, "[%d] %d %s &\n", iter->jid, iter->pid, iter->desc);
+        print_job(iter, fd);
     }
+    dprintf(fd, "----------------\n");
 }
 /*
 debugging code
@@ -77,8 +86,14 @@ int main(){
     push(1189, "cat hello.txt | sort");
     job * sec = push(2205, "ls -la");
     push(3456, "strace test.c");
-    erase(1189);
-    print_jobs(1);
+    erase(search(-1, 2789));
+    list_jobs(1);
+    erase(search(-1, 2205));
+    list_jobs(1);
+    job * t = search(-1, 3456)->next;
+    job * f = search(1, -1)->next;
+    print_job(t, 1);
+    print_job(f, 1);
     return 0;
 }
 */
