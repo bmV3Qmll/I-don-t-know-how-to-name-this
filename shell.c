@@ -19,6 +19,7 @@
 
 volatite pid_t fg_pid; // indicating which process is running in foreground
 
+//  syscalls plus error checking 
 pid_t Fork(){
     pid_t pid = fork();
     if (pid < 0){
@@ -67,22 +68,45 @@ int parseline(char * buf, char * argv[]){
     return bg;
 }
 
+//  Execute pre-defined commands (if called)
 int built_in(char * argv[]){
-    switch(argv[0]){
-        case "exit":
-            exit(0);
-        case "jobs":
-            print_jobs(1);
-            break;
-        case "bg":
-            
-            break;
-        case "fg":
-            
-            break;
-        default:
-            return 0;
+    if (argv[0] == "exit"){exit(0);}
+    else if (argv[0] == "jobs"){list_jobs(1); return 1;}
+    else if (argv[0] != "bg" && argv[0] != "fg"){return 0;}
+    
+    //  Process JID / PID
+    int j = -1;
+    pid_t p = -1;
+    if (*argv[1] == '%'){j = atoi(argv[1] + 1);}
+    else{p = atoi(argv[1]);}
+
+    if (!j && !p){
+        perror("Invalid ID");
+        return 0;
     }
+    
+    int fg = (argv[0] == "fg");
+    // if process stopped, send SIGCONT
+    p = waitpid(p, &stat, WNOHANG);
+    if (p && WIFSTOPPED(stat)){
+        Kill(p, SIGCONT);
+        if (fg){waitpid(p, &stat, 0);}
+    }else if (p){
+        //  process terminated but hadn't been erased
+        //  fork new one
+        job * tar = search(j, p)->next;
+        if (!tar){return 1;}
+        char * des = tar->desc;
+        if (fg){}
+        eval();
+        //  old process will be deleted by sigchild_handler
+    }// else p still runs
+    if {
+        
+    }else{
+        
+    }
+    return 1;
 }
 
 
@@ -95,7 +119,7 @@ void sigint_handler(int sig){
 void sigchild_handler(int sig){
     pid_t child_pid;
     while((child_pid = waitpid(-1, NULL, 0)) > 0){
-        erase(child_pid);
+        erase(search(-1, child_pid));
         // log something maybe
     }
 }
