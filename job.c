@@ -39,6 +39,9 @@ struct linked_list{
     ll * jobs = (struct linked_list *) Malloc(sizeof(struct linked_list));
     jobs->head = construct(0, 0, NULL, NULL);
     jobs->tail = construct(0, 0, jobs->head, NULL);
+    ...
+    free_all(jobs);
+    free(jobs);
 */
 
 void push(ll * jobs, pid_t p, char * des){ // O(1)
@@ -111,6 +114,8 @@ int main(){
     job * f = search(jobs, 1, -1)->next;
     print_job(t, 1);
     print_job(f, 1);
+    free_all(jobs);
+    free(jobs);
     return 0;
 }
 
