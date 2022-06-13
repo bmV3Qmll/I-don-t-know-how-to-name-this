@@ -25,7 +25,7 @@ job * construct(pid_t p, int j, job * prev, char * des){
     t->desc = des;
 }
 
-volatile int count = 0;
+volatile int count = 0;     // tell the compiler not to cache count, which may be updated by signal handler
 
 // linked_list contains two empty end nodes head && tail; count to keep track of the number of jobs
 struct linked_list{
@@ -58,7 +58,7 @@ job * search(int j, pid_t p){ // for unknown variables, set to -1
 }
 
 void erase(job * prev){
-    if (!tar){return;}
+    if (!prev){return;}
     job * temp = prev->next;
     prev->next = prev->next->next;
     free(temp);
