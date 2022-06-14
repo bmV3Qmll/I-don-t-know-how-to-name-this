@@ -2,7 +2,7 @@
 - Prompt user for input
 - Run built-in commands, which are indicated in "built-in" function
 - Run executable files with specified arguments and set environment variables (supports only absolute path)
-- Handle SIGINT / SIGSTOP 
+- Handle SIGINT, SIGCHLD, SIGTSTP 
 - Jobs control
 */
 #include <unistd.h>
@@ -31,7 +31,7 @@ void Exit(int status){
         free_all(jobs);
         free(jobs);
     }
-    Exit(status);
+    exit(status);
 };
 
 pid_t Fork(){
@@ -75,19 +75,19 @@ int Sigprocmask(int how, const sigset_t *restrict set, sigset_t *restrict oldset
 int parseline(char * buf, char * argv[]){
     char *delim;
     int argc = 0, bg;
-    
+
     buf[strlen(buf) - 1] = ' '; // replace '\n' by ' ' for the while loop
-    while (*buf && *buf == ' '){++buf;} // ignore leading spaces
-    
+    while (*buf && ((int) *buf == 32)){++buf;} // ignore leading spaces
+
     while ((delim = strchr(buf, 0x20))){
-        argv[argc++] = buf; 
+        argv[argc++] = buf;
         *delim = '\0'; // terminate argument by null byte
-        
+
         buf = delim + 1;
-        while (*buf && *buf == ' '){++buf;} // ignore spaces between arguments
+        while (*buf && ((int) *buf == 32)){++buf;} // ignore spaces between arguments
     }
     argv[argc] = NULL;
-    if ((bg = !strcmp(argv[argc - 1], "&") )){
+    if (argc && (bg = !strcmp(argv[argc - 1], "&") )){
         argv[--argc] = NULL;
     }
     return bg;
@@ -134,7 +134,7 @@ int built_in(char * argv[]){
 }
 
 
-// These are signal handlers for SIGINT, SIGCHLD and SIGSTOP
+// These are signal handlers for SIGINT, SIGCHLD and SIGTSTP
 void sigint_handler(int sig){
     Kill(fg_pid, SIGINT); // Sends SIGINT to foreground process
     return;
@@ -158,8 +158,8 @@ void sigchld_handler(int sig){
     errno = old_errno;  // restore errno
 }
 
-void sigstop_handler(int sig){
-    Kill(fg_pid, SIGSTOP); // Sends SIGSTOP to foreground process
+void sigtstp_handler(int sig){
+    Kill(fg_pid, SIGTSTP); // Sends SIGTSTP to foreground process
     return;
 }
 
@@ -179,12 +179,12 @@ void eval(char * cmd){
     // Register signal handler
     Signal(SIGINT, sigint_handler); 
     Signal(SIGCHLD, sigchld_handler);
-    Signal(SIGSTOP, sigstop_handler); // SIGSTOP cannot be caught so how are we gonna do this
+    Signal(SIGTSTP, sigtstp_handler); // trigger when Ctrl+Z
     
     strncpy(buf, cmd, strlen(cmd));
     bg = parseline(buf, argv);
     
-    if (!strcmp(argv[0], NULL)){return;} // Empty command line
+    if (!argv[0]){return;} // Empty command line
     
     if (!built_in(argv)){
 /* Mitigate race condition
