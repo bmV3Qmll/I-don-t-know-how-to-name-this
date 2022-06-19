@@ -1,6 +1,8 @@
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 
+typedef struct rio rio;
 #define BUF_SIZE 8192
 
 // Unbuffered input and output functions
@@ -12,7 +14,7 @@ ssize_t readn(int fd, const void * usrbuf, size_t n){
 		if ((nread = read(fd, buf, nleft)) < 0){
 			if (errno == EINTR){nread = 0;} //  Interrupted by sig handler return -> call read again
 			else{return -1;}
-		}else if (!nread){break;} // EOF
+		}else if (nread == 0){break;} // EOF
 		nleft -= nread;
 		buf += nread;
 	}
@@ -22,7 +24,7 @@ ssize_t readn(int fd, const void * usrbuf, size_t n){
 ssize_t writen(int fd, const void * usrbuf, size_t n){
 	size_t nleft = n;
 	ssize_t nwriten;
-	char * buf = userbuf;
+	char * buf = usrbuf;
 	while (nleft > 0){
 		if ((nwriten = write(fd, buf, nleft)) <= 0){
 			if (errno == EINTR){nwriten = 0;} //  Interrupted by sig handler return -> call write again
@@ -58,7 +60,7 @@ ssize_t buf_read(rio * rp, const char * usrbuf, size_t n){
 	while (rp->cnt <= 0){
 		if ((rp->cnt = read(rp->fd, rp->buf, sizeof(rp->buf))) < 0){
 			if (errno != EINTR){return -1;}
-		}else if (!count){return 0;} // EOF
+		}else if (rp->cnt == 0){return 0;} // EOF
 		else{rp->ptr = rp->buf;} // reset rp->ptr
 	}
 	
@@ -82,7 +84,7 @@ ssize_t buf_readline(rio * rp, const char * usrbuf, size_t len){
 				++n;
 				break;
 			}
-		}else if (!nread){
+		}else if (nread == 0){
 			if (n == 1){return 0;} 	// EOF at the start
 			else{break;} 			// already process some data
 		}else{return -1;}
@@ -98,7 +100,7 @@ ssize_t buf_readn(rio * rp, const char * usrbuf, size_t n){
 	char * buf = usrbuf;
 	while (nleft > 0){
 		if ((nread = buf_read(rp, buf, nleft)) < 0){return -1;} // since buf_read already detects error
-		else if (!nread){break;}
+		else if (nread == 0){break;}
 		nleft -= nread;
 		buf += nread;
 	}

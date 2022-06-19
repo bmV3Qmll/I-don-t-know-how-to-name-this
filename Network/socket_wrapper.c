@@ -1,7 +1,10 @@
-#include <sys/type.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 int Getaddrinfo(const char *restrict node, const char *restrict service, const struct addrinfo *restrict hints, struct addrinfo **restrict res){
 	int err;
@@ -13,16 +16,16 @@ int Getaddrinfo(const char *restrict node, const char *restrict service, const s
 }
 
 int open_clientfd(char * host, char * port){
-	struct addrinfo *hints, **list_addr, *iter;
+	struct addrinfo hints, *list_addr, *iter;
 	int clientfd;
 	
-	memset(hints, 0, sizeof(struct addrinfo));
-	hints->ai_socktype = SOCK_STREAM;
-	hints->ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG;
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG;
   
-	Getaddrinfo(host, port, hints, list_addr);
+	Getaddrinfo(host, port, &hints, &list_addr);
 	
-	for (iter = *list_addr; iter; iter = iter->ai_next){
+	for (iter = list_addr; iter; iter = iter->ai_next){
 		if((clientfd = socket(iter->ai_family, iter->ai_socktype, iter->ai_protocol)) == -1){continue;}
 		if (connect(clientfd, iter->ai_addr, iter->ai_addrlen) == 0){break;}
 		close(clientfd); 	//	unable to connect
@@ -36,20 +39,20 @@ int open_clientfd(char * host, char * port){
 }
 
 int open_listenfd(char * port){
-	struct addrinfo *hints, **list_addr, *iter;
+	struct addrinfo hints, *list_addr, *iter;
 	int listenfd, optval = 1;
 	
-	memset(hints, 0, sizeof(struct addrinfo));
-	hints->ai_socktype = SOCK_STREAM;
-	hints->ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG | AI_PASSIVE;
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_NUMERICSERV | AI_ADDRCONFIG | AI_PASSIVE;
   
-	Getaddrinfo(NULL, port, hints, list_addr);
+	Getaddrinfo(NULL, port, &hints, &list_addr);
 	
-	for (iter = *list_addr; iter; iter = iter->ai_next){
+	for (iter = list_addr; iter; iter = iter->ai_next){
 		if ((listenfd = socket(iter->ai_family, iter->ai_socktype, iter->ai_protocol)) == -1){continue;}
 		
 		//	Eliminates "Address already in use" error from bind
-		Setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval , sizeof(int));
+		setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&optval , sizeof(int));
 		
 		//	Bind the descriptor to the address
 		if (bind(listenfd, iter->ai_addr, iter->ai_addrlen) == 0){break;}

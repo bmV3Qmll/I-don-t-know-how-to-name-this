@@ -3,6 +3,6 @@
 
 int Getaddrinfo(const char *restrict, const char *restrict, const struct addrinfo *restrict, struct addrinfo **restrict);
 int open_clientfd(char *, char *);
-int open_listenfd(char *, char *);
+int open_listenfd(char *);
 
 #endif

@@ -1,7 +1,8 @@
 #ifndef ROBUST_IO_H_
 #define ROBUST_IO_H_
 
-typedef struct rio rio
+#define BUF_SIZE 8192
+typedef struct rio rio;
 ssize_t readn(int, const void *, size_t);
 ssize_t writen(int, const void *, size_t);
 

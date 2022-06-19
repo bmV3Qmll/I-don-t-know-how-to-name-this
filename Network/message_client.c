@@ -1,9 +1,10 @@
-#include <sys/type.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "robust_IO.h" 
 #include "socket_wrapper.h"
 
@@ -22,15 +23,15 @@ int main(int argc, char * argv[]){
 		exit(1);
 	}
 	
-	struct rio * rp;
-	rio_init(rp, fd);
+	struct rio rp;
+	rio_init(&rp, fd);
 	
-	buf_readline(rp, buf, MAXLEN);
+	buf_readline(&rp, buf, MAXLEN);
 	fputs(buf, stdout);
 	
 	while(fgets(buf, MAXLEN, stdin) != NULL){
 		writen(fd, buf, strlen(buf));
-		buf_readline(rp, buf, MAXLEN);
+		buf_readline(&rp, buf, MAXLEN);
 		fputs(buf, stdout);
 	}
 	close(fd);
