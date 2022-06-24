@@ -77,7 +77,7 @@ void process_reqhdrs(struct rio * rp){
 }
 
 int parse_uri(char * uri, char * file, char * cgiargs){
-    strcpy(file, "/var/www/html");  // '.' indicates the home directory for webserver, can be replaced
+    strcpy(file, "/var/www/html");  // indicates the home directory for webserver, can be replaced
     strcat(file, uri);
 
     if (strstr(uri, "/cgi-bin/") == NULL){
@@ -180,7 +180,7 @@ void serve(int connfd){
 
     if (strcasecmp(method, (char *) "GET")){
         error(connfd, method, 501, "Not implemented", "Server doesn't support this method :(");
-	return;
+	    return;
     }
 
     process_reqhdrs(&rp);
@@ -189,14 +189,14 @@ void serve(int connfd){
 
     if (stat(filename, &st) == -1){
         error(connfd, filename, 404, "Not found", "File not found");
-	return;
+	    return;
     }
 
     if (is_static){
         // check if filename is a regular, readable file
         if (!S_ISREG(st.st_mode) || !(st.st_mode & S_IRUSR)){
             error(connfd, filename, 403, "Forbidden", "Low privilege");
-	    return;
+	        return;
         }
 
         query_static(connfd, filename, st.st_size);
@@ -204,8 +204,8 @@ void serve(int connfd){
         // check if filename is a regular, executable file
         if (!S_ISREG(st.st_mode) || !(st.st_mode & S_IXUSR)){
             error(connfd, filename, 403, "Forbidden", "Low privilege");
-	    return;
-	}
+	        return;
+	    }
 
         query_dynamic(connfd, filename, arg);
     }
