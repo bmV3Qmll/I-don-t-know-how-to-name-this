@@ -6,7 +6,7 @@ typedef struct rio rio;
 #define BUF_SIZE 8192
 
 // Unbuffered input and output functions
-ssize_t readn(int fd, const void * usrbuf, size_t n){
+ssize_t readn(int fd, void * usrbuf, size_t n){
 	size_t nleft = n;
 	ssize_t nread;
 	char * buf = usrbuf;
@@ -21,7 +21,7 @@ ssize_t readn(int fd, const void * usrbuf, size_t n){
 	return n - nleft;
 }
 
-ssize_t writen(int fd, const void * usrbuf, size_t n){
+ssize_t writen(int fd, void * usrbuf, size_t n){
 	size_t nleft = n;
 	ssize_t nwriten;
 	char * buf = usrbuf;
@@ -33,7 +33,7 @@ ssize_t writen(int fd, const void * usrbuf, size_t n){
 		nleft -= nwriten;
 		buf += nwriten;
 	}
-	return n - nwriten;
+	return n;
 }
 
 // Buffered input functions
@@ -53,7 +53,7 @@ void rio_init(rio * rp, int fd){
 	rp->ptr = rp->buf;
 }
 
-ssize_t buf_read(rio * rp, const char * usrbuf, size_t n){
+ssize_t buf_read(rio * rp, void * usrbuf, size_t n){
 	int count = n;
 	
 	// refill rp->buf when empty / there is no unread bytes
@@ -73,9 +73,8 @@ ssize_t buf_read(rio * rp, const char * usrbuf, size_t n){
 }
 
 // read at most (len - 1) characters on one line and null-terminate it
-ssize_t buf_readline(rio * rp, const char * usrbuf, size_t len){
-	int n = 1;
-	ssize_t nread;
+ssize_t buf_readline(rio * rp, void * usrbuf, size_t len){
+	int n = 1, nread;
 	char c, *buf = usrbuf;
 	for (; n < len; ++n){
 		if ((nread = buf_read(rp, &c, 1)) > 0){ // read only one char
@@ -89,12 +88,12 @@ ssize_t buf_readline(rio * rp, const char * usrbuf, size_t len){
 			else{break;} 			// already process some data
 		}else{return -1;}
 	}
-	*buf = '\0';
+	*buf = 0;
 	return n - 1;
 }
 
 // consecutively use buf_read to read n bytes from rp to usrbuf
-ssize_t buf_readn(rio * rp, const char * usrbuf, size_t n){
+ssize_t buf_readn(rio * rp, void * usrbuf, size_t n){
 	size_t nleft = n;
 	ssize_t nread;
 	char * buf = usrbuf;

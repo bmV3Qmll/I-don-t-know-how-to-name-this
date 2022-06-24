@@ -9,6 +9,8 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <errno.h>
 #include "robust_IO.h" 
 #include "socket_wrapper.h"
 
@@ -16,6 +18,7 @@
 #define MAXRESP 2048
 
 extern char **environ;
+typedef void (*sighandler_t)(int);
 
 pid_t Fork(){
     pid_t pid = fork();
@@ -24,6 +27,25 @@ pid_t Fork(){
         exit(1);
     }
     return pid;
+}
+
+sighandler_t Signal(int signum, sighandler_t handler){
+    sighandler_t prev = signal(signum, handler);
+    if (prev == SIG_ERR){
+        perror("signal error");
+        exit(1);
+    }
+    return prev;
+}
+
+void sigchld_handler(int sig){
+    pid_t child_pid;
+    int old_errno = errno;
+    while((child_pid = waitpid(-1, NULL, 0)) > 0){}
+    if (errno != ECHILD){
+        perror("waitpid error");
+    }
+    errno = old_errno;
 }
 
 void error(int fd, char * cause, int code, char * msg, char * desc){
@@ -49,7 +71,7 @@ void process_reqhdrs(struct rio * rp){
 
     while(1){
         buf_readline(rp, buf, MAXLEN);
-        if (strcmp(buf, "\r\n")){break;}
+        if (!strcmp(buf, "\n") || !strcmp(buf, "\r\n")){break;}
         printf("%s", buf);
     }
 }
@@ -95,12 +117,18 @@ void query_static(int fd, char * filename, int filesize){
         error(fd, filename, 500, "Internal Server Error", "Unable to open");
         return;
     }
-    
+ 
     if ((filecopy = mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0)) == (void *) -1){
         error(fd, filename, 500, "Internal Server Error", "Unable to copy");
         return;
     }
-
+    /*
+    filecopy = malloc(filesize);
+    if (readn(srcfd, filecopy, filesize) == -1){
+    	error(fd, filename, 500, "Internal Server Error", "Unable to copy");
+        return;
+    }
+    */
     // Process response headers
     sprintf(resp, "HTTP/1.0 200 OK\r\n");
     sprintf(resp, "%sServer: Tiny Web Server\r\n", resp);
@@ -122,6 +150,8 @@ void query_dynamic(int fd, char * filename, char * cgiargs){
     char resp[MAXRESP], * empty_argv[] = {NULL};
     int pid;
 
+    Signal(SIGCHLD, sigchld_handler);
+
     sprintf(resp, "HTTP/1.0 200 OK\r\n");
     sprintf(resp, "%sServer: Tiny Web Server\r\n", resp);
     writen(fd, resp, strlen(resp));
@@ -134,11 +164,6 @@ void query_dynamic(int fd, char * filename, char * cgiargs){
             perror("execve error");
             exit(1);
         }
-    }
-
-    if (waitpid(pid, NULL, 0) == -1){
-        perror("waitpid error");
-        return;
     }
 }
 
@@ -155,7 +180,6 @@ void serve(int connfd){
 
     if (strcasecmp(method, (char *) "GET")){
         error(connfd, method, 501, "Not implemented", "Server doesn't support this method :(");
-        	printf("error ok\n");
 	return;
     }
 
