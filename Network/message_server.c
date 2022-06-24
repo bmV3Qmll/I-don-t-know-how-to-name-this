@@ -1,10 +1,10 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include "robust_IO.h" 
@@ -54,8 +54,8 @@ int main(int argc, char * argv[]){
 		exit(0);
 	}
 	
-	int listenfd = open_listenfd(argv[1]), connfd;
-	if (listenfd == -1){
+	int listenfd , connfd;
+	if ((listenfd = open_listenfd(argv[1])) == -1){
 		fprintf(stderr, "unable to open port %s", argv[1]);
 		exit(1);
 	}

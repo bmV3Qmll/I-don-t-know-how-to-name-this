@@ -1,10 +1,10 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include "robust_IO.h" 
 #include "socket_wrapper.h"
 
@@ -17,8 +17,8 @@ int main(int argc, char * argv[]){
 	}
 	
 	char buf[MAXLEN];
-	int fd = open_clientfd(argv[1], argv[2]);
-	if (fd == -1){
+	int fd ;
+	if ((fd = open_clientfd(argv[1], argv[2])) == -1){
 		fprintf(stderr, "404: Address not found");
 		exit(1);
 	}
