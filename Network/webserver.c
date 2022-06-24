@@ -178,7 +178,7 @@ void serve(int connfd){
     printf("Request:\n%s", buf);
     sscanf(buf, "%s %s %s", method, uri, version);
 
-    if (strcasecmp(method, (char *) "GET")){
+    if (strcasecmp(method, (char *) "GET") && strcasecmp(method, (char *) "POST")){
         error(connfd, method, 501, "Not implemented", "Server doesn't support this method :(");
 	    return;
     }
@@ -207,6 +207,9 @@ void serve(int connfd){
 	        return;
 	    }
 
+        if (strcasecmp(method, (char *) "POST")){
+            buf_readline(&rp, arg, MAXLEN);
+        }
         query_dynamic(connfd, filename, arg);
     }
 }
