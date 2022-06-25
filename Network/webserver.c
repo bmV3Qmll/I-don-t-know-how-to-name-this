@@ -69,8 +69,7 @@ void error(int fd, char * cause, int code, char * msg, char * desc){
 void process_reqhdrs(struct rio * rp){
     char buf[MAXLEN];
 
-    while(1){
-        buf_readline(rp, buf, MAXLEN);
+    while(buf_readline(rp, buf, MAXLEN) > 0){
         if (!strcmp(buf, "\n") || !strcmp(buf, "\r\n")){break;}
         printf("%s", buf);
     }
@@ -160,7 +159,7 @@ void query_dynamic(int fd, char * filename, char * cgiargs){
         dup2(fd, STDOUT_FILENO);    // redirect child's output to client
         setenv("QUERY_STRING", cgiargs, 1); // pull arguments to cgi program
 
-        if (execve(filename, empty_argv, environ) == -1){
+	if (execve(filename, empty_argv, environ) == -1){
             perror("execve error");
             exit(1);
         }
@@ -207,7 +206,7 @@ void serve(int connfd){
 	        return;
 	    }
 
-        if (strcasecmp(method, (char *) "POST")){
+        if (!strcasecmp(method, (char *) "POST")){
             buf_readline(&rp, arg, MAXLEN);
         }
         query_dynamic(connfd, filename, arg);

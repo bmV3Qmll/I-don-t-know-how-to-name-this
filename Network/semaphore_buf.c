@@ -2,22 +2,6 @@
 #include <stdlib.h>
 #include "semaphore_buf.h"
 
-/*  Structure to store available file descriptors that:
-    - pushed in by main thread
-    - queued by peer threads to perform operations on
-    - protected by semaphore
-    Use producer-consumer model
-*/
-typedef struct{
-    int n;              // number of allocated slots
-    int * buf;          // array of fds
-    int head;
-    int tail;           // all fds whose index from (head + 1) to tail are ready
-    sem_t mutex;        // protect access to buf
-    sem_t slots;        // indicating number of empty slots
-    sem_t items;
-} sem_buf;
-
 void sbuf_init(sem_buf * p, int n){
     p->buf = calloc(n, sizeof(int));
     p->n = n;
@@ -44,7 +28,7 @@ int sbuf_remove(sem_buf * p){
     int ret;
     sem_wait(&p->items);
     sem_wait(&p->mutex);
-    ret = p->buf[(p->head++) % (p->n)];
+    ret = p->buf[(++p->head) % (p->n)];
     sem_post(&p->mutex);
     sem_post(&p->slots);
     return ret;
