@@ -29,6 +29,9 @@ int used, total;                    // number of in use peer threads, peers in t
 pthread_t tid[MAXPEER];
 sem_t u_mutex, t_mutex, id_guard;   // protect used, total and tid
 
+void check_empty();
+void check_full();
+
 pid_t Fork(){
     pid_t pid = fork();
     if (pid < 0){

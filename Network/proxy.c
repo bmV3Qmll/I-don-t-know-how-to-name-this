@@ -13,11 +13,13 @@
 #include <sys/time.h>
 #include <sys/select.h>
 #include <signal.h>
+#include <errno.h>
 #include "robust_IO.h" 
 #include "socket_wrapper.h"
 #include "semaphore_buf.h"
 
 #define MAXLEN 1024
+#define MAXRESP 2048
 #define CACHE_LIMIT 8192
 #define DEF_MODE S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH
 #define TIMEOUT 5.0
@@ -27,6 +29,7 @@ char * filter;  // pointer to readable virtual memory mapping of filter file
 sem_t mutex;    // prevent logfd from simultaneous write operation
 const char * methods = "POST PUT PATCH";
 struct stat st; // stat of filter file
+typedef void (*sighandler_t)(int);
 
 void * Malloc(size_t size){
     void * res = malloc(size);
@@ -112,7 +115,7 @@ int get_body(int forward_fd, rio * rp, char * cache, char * lim, int len){
         }
         nread = buf_readn(rp, cache, len);
         if (nread == -1){
-            error(forward_fd, strerror_r(errno, buf, MAXLEN), 500, "Internal Server Error", "read error");
+            error(forward_fd, "Broken pipe", 500, "Internal Server Error", "");
             return 0;
         }
         if (nread < len){
@@ -127,8 +130,8 @@ int get_body(int forward_fd, rio * rp, char * cache, char * lim, int len){
 int forward(int fd){
     struct rio conn_io;
     char * cache, * host, * port, * head, * end;
-    char method[16], uri[64], version[16], url[128];
-    int clientfd, body = -1;
+    char method[16], uri[64], version[16], url[128], buf[128];
+    int clientfd, body = -1, nread;
 
     rio_init(&conn_io, fd);
     cache = Malloc(CACHE_LIMIT);
@@ -208,7 +211,7 @@ void reply(int client, int server){
         error(client, "5.0 secs", 504, "Gateway Timeout", "Destination server did not response in");
         return;
     }else if (ready == -1){
-        error(client, strerror_r(errno), 500, "Internal Server Error", "select error");
+        error(client, "", 500, "Internal Server Error", "");
         return;
     }
 
@@ -229,10 +232,13 @@ void reply(int client, int server){
 void *thread(void *vargp){
     int connfd, server;
     connfd = *((int *) vargp);
+    printf("%d\n", connfd);
     pthread_detach(pthread_self());
     free(vargp);
     if ((server = forward(connfd))){
+	    printf("forward ok\n");
         reply(connfd, server);
+		printf("reply ok\n");
     }
     close(connfd);
     exit(0);
@@ -276,11 +282,13 @@ int main(int argc, char * argv[]){
 
     while(1){
         addrlen = sizeof(struct sockaddr);
-        connfd = malloc(sizeof(int));
+        connfd = Malloc(sizeof(int));
         *connfd = accept(listenfd, client, &addrlen);
-        if (getnameinfo(client, addrlen, host, MAXLEN, port, MAXLEN, 0) == 0){
+	// accept returns -1, generate "Bad address"
+	/*
+	if (getnameinfo(client, addrlen, host, MAXLEN, port, MAXLEN, 0) == 0){
             printf("Receive connection from %s:%s\n", host, port);
-            pthread_create(&tid, NULL, &thread, &connfd);
-        }
+	    pthread_create(&tid, NULL, &thread, connfd);
+	}*/
     }
 }
