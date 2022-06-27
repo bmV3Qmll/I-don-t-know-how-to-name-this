@@ -57,15 +57,15 @@ int main(int argc, char * argv[]){
     socklen_t addrlen;
 
     if (argc != 2){
-	fprintf(stderr, "usage: %s <port>\n", argv[0]);
-	exit(0);
+	    fprintf(stderr, "usage: %s <port>\n", argv[0]);
+	    exit(0);
     }
 
     sbuf_init(&sbuf, MAXPEER);
 
     if ((listenfd = open_listenfd(argv[1])) == -1){
-	fprintf(stderr, "unable to open port %s", argv[1]);
-	exit(1);
+	    fprintf(stderr, "unable to open port %s", argv[1]);
+	    exit(1);
     }
 
     for (int i = 0; i < MAXPEER; ++i){
@@ -74,7 +74,7 @@ int main(int argc, char * argv[]){
 
     while(1){
         addrlen = sizeof(struct sockaddr);
-	connfd = accept(listenfd, &client, &addrlen);
+	    connfd = accept(listenfd, &client, &addrlen);
         sbuf_insert(&sbuf, connfd);
     }
 }

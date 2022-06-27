@@ -11,14 +11,23 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <errno.h>
+#include <pthread.h>
+#include <semaphore.h>
 #include "robust_IO.h" 
 #include "socket_wrapper.h"
+#include "semaphore_buf.h"
 
 #define MAXLEN 1024
 #define MAXRESP 2048
+#define MAXPEER 32
 
 extern char **environ;
 typedef void (*sighandler_t)(int);
+
+sem_buf sbuf;                       // store ready connfd for peers to serve
+int used, total;                    // number of in use peer threads, peers in total
+pthread_t tid[MAXPEER];
+sem_t u_mutex, t_mutex, id_guard;   // protect used, total and tid
 
 pid_t Fork(){
     pid_t pid = fork();
@@ -159,7 +168,7 @@ void query_dynamic(int fd, char * filename, char * cgiargs){
         dup2(fd, STDOUT_FILENO);    // redirect child's output to client
         setenv("QUERY_STRING", cgiargs, 1); // pull arguments to cgi program
 
-	if (execve(filename, empty_argv, environ) == -1){
+	    if (execve(filename, empty_argv, environ) == -1){
             perror("execve error");
             exit(1);
         }
@@ -213,6 +222,53 @@ void serve(int connfd){
     }
 }
 
+void *thread(void *vargp){
+    while (1){
+        int connfd = sbuf_remove(&sbuf);
+        sem_post(&u_mutex);
+        ++used;
+        sem_wait(&u_mutex);
+        serve(connfd);
+        close(connfd);
+        sem_post(&u_mutex);
+        --used;
+        sem_wait(&u_mutex);
+        check_empty();
+    }
+}
+
+void check_empty(){
+    sem_post(&t_mutex);
+    sem_post(&u_mutex);
+    sem_post(&id_guard);
+    if (!used && total != 1){ // halve the created threads
+        for (int i = (total >> 1); i < total; ++i){
+            pthread_cancel(tid[i]);
+        }
+        total >>= 1;
+        printf("Halve to %d\n", total);
+    }
+    sem_wait(&id_guard);
+    sem_wait(&u_mutex);
+    sem_wait(&t_mutex);
+}
+
+void check_full(){
+    sem_post(&t_mutex);
+    sem_post(&u_mutex);
+    sem_post(&id_guard);
+    if (used == total && total < MAXPEER){
+        for (int i = total; i < (total << 1); ++i){
+            pthread_create(tid + i, NULL, &thread, NULL);
+        }
+        total <<= 1;
+        printf("Double to %d\n", total);
+    }
+    sem_wait(&id_guard);
+    sem_wait(&u_mutex);
+    sem_wait(&t_mutex);
+}
+
 int main(int argc, char * argv[]){
     if (argc != 2){
 		fprintf(stderr, "usage: %s <port>\n", argv[0]);
@@ -229,14 +285,22 @@ int main(int argc, char * argv[]){
 	socklen_t addrlen;
 	char host[MAXLEN], port[MAXLEN];
 	
+    sbuf_init(&sbuf, MAXPEER);
+    used = 0;
+    total = 1;
+    sem_init(&u_mutex, 0, 1);
+    sem_init(&t_mutex, 0, 1);
+    sem_init(&id_guard, 0, 1);
+    pthread_create(tid, NULL, &thread, NULL);
+
 	while(1){
 		addrlen = sizeof(struct sockaddr);
 		connfd = accept(listenfd, client, &addrlen);
 		if (getnameinfo(client, addrlen, host, MAXLEN, port, MAXLEN, 0) == 0){
 			printf("Receive connection from %s:%s\n", host, port);
-			serve(connfd);
+            check_full();
+			sbuf_insert(&sbuf, connfd);
 		}
-		close(connfd);
 	}
 	
     return 0;
