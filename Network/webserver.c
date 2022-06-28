@@ -296,6 +296,8 @@ int main(int argc, char * argv[]){
     sem_init(&id_guard, 0, 1);
     pthread_create(tid, NULL, &thread, NULL);
 
+    Signal(SIGPIPE, SIG_IGN);
+
 	while(1){
 		addrlen = sizeof(struct sockaddr);
 		connfd = accept(listenfd, client, &addrlen);
