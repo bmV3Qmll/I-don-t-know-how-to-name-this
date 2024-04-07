@@ -1,4 +1,2 @@
-# I-don-t-know-how-to-name-this
-seriously
-
-continue to show off me not knowing what to write here
+# My C projects
+Follwing the book "Computer Systems: A Programmer's Perspective 3rd Edition"
